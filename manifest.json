@@ -1,0 +1,13 @@
+{
+   "content_scripts": [ {
+      "js": [ "content.js" ],
+      "matches": [ "https://roamresearch.com/*" ],
+      "run_at": "document_end"
+   } ],
+   "description": "Auto link certain predefined aliases in Roam Research",
+   "manifest_version": 2,
+   "name": "Roam Autoalias",
+   "permissions": [ "storage" ],
+   "version": "0.1.0"
+}
+
