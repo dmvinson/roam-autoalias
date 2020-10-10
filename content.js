@@ -10,14 +10,6 @@ const PAGE_NAME_ALIAS_SPLIT_CHAR = ":";
 const ALIAS_REGEX = /\[.*?\]\(\[\[.*?\]\]\)/g;
 const REFERENCE_REGEX = /\[\[.*?\]\]/g;
 
-// DONE: Check works with elements added after page load
-// DONE: Make it work directly after pressing enter
-// DONE: Figure out Chrome localstorage
-// DONE: Add a way to add aliases, either directly on page or [[roam-autoalias]]
-// DONE: Figure out way of detecting whether we are inside brackets or not so we're not replacing pages with pages
-// TODO: Fix cases where multiple aliases match within one word, check for spaces around word before aliasing
-// TODO: Fix only one word in block gets aliased
-
 function debounce(callback, wait) {
   let timeout;
   return (...args) => {
