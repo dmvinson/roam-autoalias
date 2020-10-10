@@ -7,14 +7,16 @@ const TYPING_PAUSE_INTERVAL = 2500;
 const ALIAS_PAGE_NAME = "roam-autoalias";
 const ALIAS_DELIMITER = ",";
 const PAGE_NAME_ALIAS_SPLIT_CHAR = ":";
+const ALIAS_REGEX = /\[.*?\]\(\[\[.*?\]\]\)/g;
+const REFERENCE_REGEX = /\[\[.*?\]\]/g;
 
 // DONE: Check works with elements added after page load
 // DONE: Make it work directly after pressing enter
-// TODO: Figure out Chrome localstorage
+// DONE: Figure out Chrome localstorage
 // DONE: Add a way to add aliases, either directly on page or [[roam-autoalias]]
-// TODO: Figure out way of detecting whether we are inside brackets or not so we're not replacing pages with pages
-//
-//
+// DONE: Figure out way of detecting whether we are inside brackets or not so we're not replacing pages with pages
+// TODO: Fix cases where multiple aliases match within one word, check for spaces around word before aliasing
+// TODO: Fix only one word in block gets aliased
 
 function debounce(callback, wait) {
   let timeout;
@@ -33,20 +35,62 @@ String.prototype.replaceAll_roamautoalias = function (strReplace, strWith) {
   return this.replace(reg, strWith);
 };
 
+function isAlreadyAliased(text, idx) {
+  ALIAS_REGEX.lastIndex = 0;
+  while ((result = ALIAS_REGEX.exec(text)) !== null) {
+    let startIdx = result.index;
+    let endIdx = result.index + result[0].length;
+    if (startIdx <= idx && idx <= endIdx) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function isInReference(text, idx) {
+  REFERENCE_REGEX.lastIndex = 0;
+  while ((result = REFERENCE_REGEX.exec(text)) !== null) {
+    let startIdx = result.index;
+    let endIdx = result.index + result[0].length;
+    if (startIdx <= idx && idx <= endIdx) {
+      return true;
+    }
+  }
+  return false;
+}
+
 function autoAliasText(text, aliasDict) {
   let currentText = text;
   Object.keys(aliasDict).forEach((k) => {
-    let replaceIdx = text.toLowerCase().search(k.toLowerCase());
-    if (replaceIdx == -1) {
-      return;
+    let rx = new RegExp(k, "ig");
+    while ((match = rx.exec(currentText)) !== null) {
+      let replaceIdx = match.index;
+      if (
+        isAlreadyAliased(currentText, replaceIdx) ||
+        isInReference(currentText, replaceIdx)
+      ) {
+        continue;
+      }
+      // Check this currentText is not already aliased
+      if (
+        currentText[replaceIdx - 1] == "[" &&
+        currentText[replaceIdx + k.length] == "]"
+      ) {
+        continue;
+      }
+      if (
+        isAlpha(currentText[replaceIdx - 1]) ||
+        isAlpha(currentText[replaceIdx + k.length] || "")
+      ) {
+        continue;
+      }
+      let pageName = aliasDict[k];
+      let alias = `[${k}]([[${pageName}]])`;
+      currentText =
+        currentText.substring(0, replaceIdx) +
+        alias +
+        currentText.substring(replaceIdx + k.length);
     }
-    // Check this text is not already aliased
-    if (text[replaceIdx - 1] == "[" && text[replaceIdx + k.length] == "]") {
-      return;
-    }
-    let pageName = aliasDict[k];
-    let alias = `[${k}]([[${pageName}]])`;
-    currentText = currentText.replaceAll_roamautoalias(k, alias);
   });
   return currentText;
 }
@@ -61,6 +105,9 @@ function handleEventByMakeAlias(event, aliasDict) {
 }
 
 function isAlpha(c) {
+  if (c === undefined) {
+    return false;
+  }
   let code = c.charCodeAt(0);
   return (
     (code > 47 && code < 58) || // numeric (0-9)
@@ -84,7 +131,13 @@ function parseAliases(text) {
 }
 
 function getAliasesFromBlock(text) {
+  if (!text || !text.startsWith("[[")) {
+    return {};
+  }
   let [pageReferenceStr, aliasesStr] = text.split(PAGE_NAME_ALIAS_SPLIT_CHAR);
+  if (pageReferenceStr === undefined || aliasesStr === undefined) {
+    return {};
+  }
   let pageName = getPageName(pageReferenceStr);
   let aliases = parseAliases(aliasesStr);
   return aliases.reduce((dict, alias) => {
@@ -137,9 +190,11 @@ const observer = new MutationObserver((mutationRecords, observer) => {
     document.querySelector(MAIN_CONTENT_SELECTOR).addEventListener(
       "keyup",
       debounce(() => {
-        let newAliasDict = gatherAllAliases();
-        saveAliasDict(newAliasDict);
-        aliasDict = newAliasDict;
+        if (currentTitle === ALIAS_PAGE_NAME) {
+          let newAliasDict = gatherAllAliases();
+          saveAliasDict(newAliasDict);
+          aliasDict = newAliasDict;
+        }
       }, 1000)
     );
   } else {
