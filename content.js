@@ -77,6 +77,7 @@ function autoAliasText(text, aliasDict) {
         continue;
       }
       let pageName = aliasDict[k];
+
       let alias = `[${k}]([[${pageName}]])`;
       currentText =
         currentText.substring(0, replaceIdx) +
@@ -162,7 +163,7 @@ function getStoredDict() {
 function saveAliasDict(d) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(d));
-    console.log("Saved dictionary successfully:", JSON.stringify(d));
+    // console.log("Saved dictionary successfully:", JSON.stringify(d));
   } catch (e) {
     console.log("Got exception", e, "while saving to roam-autoalias storage");
   }
